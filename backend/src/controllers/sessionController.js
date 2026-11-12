@@ -10,7 +10,7 @@ export const getMySessions = catchAsync(async (req, res, next) => {
   }).sort({ lastActivityAt: -1 });
 
   res.status(200).json({
-    status: "success",
+    success: true,
     results: sessions.length,
     data: { sessions },
   });
@@ -34,7 +34,7 @@ export const revokeSession = catchAsync(async (req, res, next) => {
     { revoked: true, revokedAt: new Date() }
   );
 
-  res.status(200).json({ status: "success", message: "Сесията е прекратена." });
+  res.status(200).json({ success: true, message: "Сесията е прекратена." });
 });
 
 export const revokeAllSessions = catchAsync(async (req, res, next) => {
@@ -49,7 +49,7 @@ export const revokeAllSessions = catchAsync(async (req, res, next) => {
   );
 
   res.status(200).json({
-    status: "success",
+    success: true,
     message: "Всички сесии са прекратени.",
   });
 });

@@ -1,20 +1,21 @@
 import { validationResult } from "express-validator";
 import AppError from "../utils/AppError.js";
 
-// Place after an array of express-validator check(...) chains in a route:
-// router.post("/register", [check("email").isEmail(), ...], validate, controller)
+// Поставя се след масив от express-validator правила.
+// Връща по една (първата) грешка за всяко поле.
 const validate = (req, res, next) => {
   const errors = validationResult(req);
+  if (errors.isEmpty()) return next();
 
-  if (!errors.isEmpty()) {
-    const message = errors
-      .array()
-      .map((e) => e.msg)
-      .join(", ");
-    return next(new AppError(message, 400));
-  }
+  const messages = [
+    ...new Set(
+      errors
+        .array({ onlyFirstError: true })
+        .map((e) => (e.msg === "Invalid value" ? `Невалидна стойност за поле „${e.path}“.` : e.msg)),
+    ),
+  ];
 
-  next();
+  next(new AppError(messages.join(" "), 400));
 };
 
 export default validate;

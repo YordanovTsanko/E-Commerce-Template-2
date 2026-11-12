@@ -19,7 +19,7 @@ export const getMyNotifications = catchAsync(async (req, res, next) => {
   });
 
   res.status(200).json({
-    status: "success",
+    success: true,
     results: notifications.length,
     unreadCount,
     data: { notifications },
@@ -38,7 +38,7 @@ export const markAsRead = catchAsync(async (req, res, next) => {
 
   await notification.markAsRead();
 
-  res.status(200).json({ status: "success", data: { notification } });
+  res.status(200).json({ success: true, data: { notification } });
 });
 
 export const markAllAsRead = catchAsync(async (req, res, next) => {
@@ -47,7 +47,7 @@ export const markAllAsRead = catchAsync(async (req, res, next) => {
     { read: true, readAt: new Date() }
   );
 
-  res.status(200).json({ status: "success", message: "Всички известия са маркирани като прочетени." });
+  res.status(200).json({ success: true, message: "Всички известия са маркирани като прочетени." });
 });
 
 export const deleteNotification = catchAsync(async (req, res, next) => {
@@ -60,5 +60,5 @@ export const deleteNotification = catchAsync(async (req, res, next) => {
     return next(new AppError("Известието не е намерено.", 404));
   }
 
-  res.status(204).json({ status: "success", data: null });
+  res.status(200).json({ success: true, message: "Известието е изтрито." });
 });

@@ -1,0 +1,32 @@
+# Зависимости
+node_modules/
+.pnpm-store/
+
+# Build
+dist/
+build/
+.vite/
+vite.config.js.timestamp-*
+
+# Променливи на средата (НЕ качвайте пароли и ключове в Git!)
+.env
+.env.*
+!.env.example
+
+# Логове
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Редактори и ОС
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Тестове
+coverage/

@@ -1,30 +1,37 @@
 {
-  "name": "backend",
-  "version": "1.0.0",
+  "name": "e-commerce-template-2-backend",
+  "version": "2.0.0",
+  "description": "REST API за E-Commerce Template 2 (Express + MongoDB + Cloudinary)",
   "type": "module",
-  "main": "app.js",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18.18"
+  },
   "scripts": {
     "start": "node server.js",
-    "dev": "cross-env TZ=Europe/Sofia nodemon server.js"
+    "dev": "cross-env TZ=Europe/Sofia NODE_ENV=development nodemon server.js",
+    "create-admin": "node scripts/createAdmin.js"
   },
   "dependencies": {
-    "axios": "^1.20.0",
     "bcryptjs": "^2.4.3",
-    "cors": "^2.8.6",
-    "dotenv": "^17.4.2",
-    "express": "^4.19.2",
-    "express-rate-limit": "^7.4.0",
-    "express-validator": "^7.3.2",
-    "form-data": "^4.0.6",
+    "cloudinary": "^2.5.1",
+    "compression": "^1.7.5",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-mongo-sanitize": "^2.2.0",
+    "express-rate-limit": "^7.5.0",
+    "express-validator": "^7.2.1",
+    "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
-    "mongodb": "^7.6.0",
-    "mongoose": "^8.5.0",
-    "multer": "^2.4.0",
-    "nodemailer": "^6.9.14",
-    "path": "^0.12.7"
+    "mongoose": "^8.9.5",
+    "morgan": "^1.10.0",
+    "multer": "^2.0.0",
+    "nodemailer": "^6.9.16",
+    "slugify": "^1.6.6"
   },
   "devDependencies": {
-    "cross-env": "^10.1.0",
-    "nodemon": "^3.1.4"
+    "cross-env": "^7.0.3",
+    "nodemon": "^3.1.9"
   }
 }

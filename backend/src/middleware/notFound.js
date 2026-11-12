@@ -1,8 +1,8 @@
 import AppError from "../utils/AppError.js";
 
-// Place after all routes, before errorHandler.
+// След всички маршрути, преди errorHandler
 const notFound = (req, res, next) => {
-  next(new AppError(`Не е намерен маршрут: ${req.originalUrl}`, 404));
+  next(new AppError(`Маршрутът не е намерен: ${req.method} ${req.originalUrl}`, 404));
 };
 
 export default notFound;

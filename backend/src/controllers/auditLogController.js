@@ -19,7 +19,7 @@ export const getAuditLogs = catchAsync(async (req, res, next) => {
   const total = await AuditLog.countDocuments(filter);
 
   res.status(200).json({
-    status: "success",
+    success: true,
     results: logs.length,
     total,
     page: Number(page),

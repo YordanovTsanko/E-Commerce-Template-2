@@ -1,306 +1,233 @@
 import mongoose from "mongoose";
 import Product from "../models/Product.js";
+import Category from "../models/Category.js";
 import Favorite from "../models/Favorite.js";
+import Review from "../models/Review.js";
+import Cart from "../models/Cart.js";
 import catchAsync from "../utils/catchAsync.js";
 import AppError from "../utils/AppError.js";
+import { isAdmin } from "../utils/roles.js";
+import { logAction } from "../utils/auditLog.js";
+import { deleteImages, deleteRemovedImages } from "../services/imageService.js";
+import { MAX_PRODUCT_IMAGES } from "../constants/index.js";
+import {
+  escapeRegex,
+  getPagination,
+  buildPaginationMeta,
+  parseArrayField,
+  toBool,
+} from "../utils/helpers.js";
 
-const buildFilter = (query, user) => {
+const SORT_OPTIONS = {
+  newest: { createdAt: -1 },
+  oldest: { createdAt: 1 },
+  price_asc: { finalPrice: 1, createdAt: -1 },
+  price_desc: { finalPrice: -1, createdAt: -1 },
+  rating: { rating: -1, numReviews: -1 },
+  popular: { sold: -1, createdAt: -1 },
+  name_asc: { name: 1 },
+  stock_asc: { stock: 1 },
+};
+
+const SEARCH_FIELDS = ["name", "description", "brand", "tags", "features"];
+
+// Търси категория по id или slug
+const resolveCategoryId = async (value) => {
+  if (mongoose.isValidObjectId(value)) return value;
+  const category = await Category.findOne({ slug: value }).select("_id").lean();
+  return category?._id || null;
+};
+
+// Намира продукт по id или slug
+const findProductByParam = (idOrSlug) =>
+  mongoose.isValidObjectId(idOrSlug) ? { _id: idOrSlug } : { slug: idOrSlug };
+
+const buildFilter = async (query, user) => {
   const filter = {};
+  const admin = isAdmin(user);
 
-  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
-
-  if (isAdmin) {
-    if (query.isActive === "true") {
-      filter.isActive = true;
-    } else if (query.isActive === "false") {
-      filter.isActive = false;
-    }
+  // Админът може да вижда и неактивни продукти
+  if (admin && query.isActive === "all") {
+    /* без филтър */
+  } else if (admin && query.isActive === "false") {
+    filter.isActive = false;
   } else {
-    filter.isActive = true; 
+    filter.isActive = true;
   }
 
-  if (query.type) {
-    filter.type = query.type;
+  if (query.ids) {
+    const ids = parseArrayField(query.ids).filter((id) => mongoose.isValidObjectId(id));
+    filter._id = { $in: ids };
   }
 
-  if (query.quantityType) {
-    filter.quantityType = query.quantityType;
+  if (query.category) {
+    const categoryId = await resolveCategoryId(query.category);
+    filter.category = categoryId || new mongoose.Types.ObjectId(); // несъществуваща -> празен резултат
   }
 
-  if (query.minPrice !== undefined || query.maxPrice !== undefined) {
-    filter.price = {};
-    if (query.minPrice !== undefined) filter.price.$gte = Number(query.minPrice);
-    if (query.maxPrice !== undefined) filter.price.$lte = Number(query.maxPrice);
+  if (query.brand) filter.brand = new RegExp(`^${escapeRegex(query.brand)}$`, "i");
+  if (toBool(query.featured)) filter.isFeatured = true;
+  if (toBool(query.inStock)) filter.stock = { $gt: 0 };
+  if (toBool(query.onSale)) filter.salePrice = { $ne: null };
+  if (query.rating) filter.rating = { $gte: Number(query.rating) };
+
+  if (query.minPrice || query.maxPrice) {
+    filter.finalPrice = {};
+    if (query.minPrice) filter.finalPrice.$gte = Number(query.minPrice);
+    if (query.maxPrice) filter.finalPrice.$lte = Number(query.maxPrice);
   }
 
-  if (query.search?.trim()) {
-  const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-  const terms = query.search.trim().split(/\s+/).filter(Boolean);
-  const searchFields = ["name", "description", "type", "features"];
-
-  const orConditions = [];
-  for (const term of terms) {
-    const regex = new RegExp(escapeRegex(term), "i");
-    for (const field of searchFields) {
-      orConditions.push({ [field]: regex });
-    }
+  // Всяка дума трябва да се среща в поне едно от полетата
+  const terms = query.search?.trim().split(/\s+/).filter(Boolean).slice(0, 8) || [];
+  if (terms.length) {
+    filter.$and = terms.map((term) => {
+      const regex = new RegExp(escapeRegex(term), "i");
+      return { $or: SEARCH_FIELDS.map((field) => ({ [field]: regex })) };
+    });
   }
-
-  if (orConditions.length > 0) {
-    filter.$or = orConditions;
-  }
-}
 
   return filter;
 };
 
+const attachFavorites = async (items, user) => {
+  if (!user || !items.length) return items;
+  const favorites = await Favorite.find({ user: user._id, product: { $in: items.map((i) => i._id) } })
+    .select("product")
+    .lean();
+  const favoriteIds = new Set(favorites.map((f) => String(f.product)));
+  return items.map((item) => ({ ...item, isFavorite: favoriteIds.has(String(item._id)) }));
+};
+
+// =========================
+// ПУБЛИЧНИ
+// =========================
 export const getProducts = catchAsync(async (req, res) => {
-
-  const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
-
-  const limit = Math.min(
-    Math.max(Number.parseInt(req.query.limit, 10) || 20, 1),
-    100,
-  );
-
-  const skip = (page - 1) * limit;
-
-  const filter = buildFilter(req.query, req.user);
-
-  const allowedSortFields = [
-    "createdAt",
-    "updatedAt",
-    "name",
-    "price",
-    "quantity",
-  ];
-
-  const sortField = allowedSortFields.includes(req.query.sort)
-    ? req.query.sort
-    : "createdAt";
-
-  const sortDirection = req.query.order === "asc" ? 1 : -1;
+  const pagination = getPagination(req.query, { defaultLimit: 12, maxLimit: 60 });
+  const filter = await buildFilter(req.query, req.user);
+  const sort = SORT_OPTIONS[req.query.sort] || SORT_OPTIONS.newest;
 
   const [items, total] = await Promise.all([
     Product.find(filter)
-      .sort({ [sortField]: sortDirection })
-      .skip(skip)
-      .limit(limit)
+      .populate("category", "name slug")
+      .sort(sort)
+      .skip(pagination.skip)
+      .limit(pagination.limit)
       .lean(),
-
     Product.countDocuments(filter),
   ]);
 
-  if (req.user) {
-    const productIds = items.map((item) => item._id);
-
-    const favorites = await Favorite.find({
-      user: req.user._id,
-      product: { $in: productIds },
-    })
-      .select("product")
-      .lean();
-
-    const favoriteIds = new Set(favorites.map((item) => String(item.product)));
-
-    for (const item of items) {
-      item.isFavorite = favoriteIds.has(String(item._id));
-    }
-  }
-
   res.status(200).json({
     success: true,
     data: {
-      items,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
+      items: await attachFavorites(items, req.user),
+      pagination: buildPaginationMeta(pagination, total),
     },
   });
+});
+
+// Минимална и максимална цена – за плъзгача във филтрите
+export const getPriceRange = catchAsync(async (req, res) => {
+  const [range] = await Product.aggregate([
+    { $match: { isActive: true } },
+    { $group: { _id: null, min: { $min: "$finalPrice" }, max: { $max: "$finalPrice" } } },
+  ]);
+  res.status(200).json({ success: true, data: { min: range?.min || 0, max: range?.max || 0 } });
 });
 
 export const getProduct = catchAsync(async (req, res, next) => {
-  if (!mongoose.isValidObjectId(req.params.id)) {
-    return next(new AppError("Invalid product id", 400));
-  }
+  const query = findProductByParam(req.params.idOrSlug);
+  if (!isAdmin(req.user)) query.isActive = true;
 
-  const product = await Product.findOne({
-    _id: req.params.id
-  }).lean();
+  const product = await Product.findOne(query).populate("category", "name slug").lean();
+  if (!product) return next(new AppError("Продуктът не е намерен.", 404));
 
-  if (!product) {
-    return next(new AppError("Product not found", 404));
-  }
-
-  if (req.user) {
-    product.isFavorite = !!(await Favorite.exists({
-      user: req.user._id,
-      product: product._id,
-    }));
-  }
-
-  res.status(200).json({
-    success: true,
-    data: { product },
-  });
+  const [withFavorite] = await attachFavorites([product], req.user);
+  res.status(200).json({ success: true, data: { product: withFavorite } });
 });
 
-export const createProduct = catchAsync(async (req, res) => {
-  const { name, description, type, quantityType, quantity, price } = req.body;
-  let features = [];
-  if (req.body.features) {
-    try {
-      features =
-        typeof req.body.features === "string"
-          ? JSON.parse(req.body.features)
-          : req.body.features;
-    } catch (error) {
-      return res.status(400).json({
-        success: false,
-        message: "Невалидни характеристики на продукта.",
-      });
-    }
+export const getRelatedProducts = catchAsync(async (req, res, next) => {
+  const product = await Product.findOne(findProductByParam(req.params.idOrSlug)).select("category").lean();
+  if (!product) return next(new AppError("Продуктът не е намерен.", 404));
+
+  const items = await Product.find({ _id: { $ne: product._id }, category: product.category, isActive: true })
+    .sort({ rating: -1, createdAt: -1 })
+    .limit(4)
+    .lean();
+
+  res.status(200).json({ success: true, data: { items: await attachFavorites(items, req.user) } });
+});
+
+// =========================
+// АДМИН
+// =========================
+const EDITABLE_FIELDS = ["name", "description", "price", "salePrice", "category", "brand", "unit", "stock"];
+
+const buildProductPayload = (body) => {
+  const payload = {};
+  for (const field of EDITABLE_FIELDS) {
+    if (body[field] !== undefined) payload[field] = body[field];
   }
-  if (!Array.isArray(features)) {
-    return res.status(400).json({
-      success: false,
-      message: "Характеристиките трябва да бъдат масив.",
-    });
-  }
-  if (features.length > 0) {
-    features = features
-      .map((feature) => String(feature).trim())
-      .filter(Boolean);
-  }
-  const images = Array.isArray(req.uploadedImages)
-    ? req.uploadedImages.slice(0, 5)
-    : [];
-  const product = await Product.create({
-    name: name?.trim(),
-    description: description?.trim(),
-    images,
-    type,
-    features,
-    quantityType,
-    quantity: Number(quantity),
-    price: Number(price),
-  });
-  res.status(201).json({ success: true, data: { product } });
+  if (payload.salePrice === "" || payload.salePrice === "null") payload.salePrice = null;
+  if (payload.category === "" || payload.category === "null") payload.category = null;
+  if (body.tags !== undefined) payload.tags = parseArrayField(body.tags);
+  if (body.features !== undefined) payload.features = parseArrayField(body.features);
+  if (body.isActive !== undefined) payload.isActive = toBool(body.isActive);
+  if (body.isFeatured !== undefined) payload.isFeatured = toBool(body.isFeatured);
+  return payload;
+};
+
+export const createProduct = catchAsync(async (req, res, next) => {
+  const images = req.uploadedImages || [];
+  if (!images.length) return next(new AppError("Качете поне едно изображение на продукта.", 400));
+
+  const product = await Product.create({ ...buildProductPayload(req.body), images });
+  await logAction(req, { action: "product.create", entityType: "Product", entityId: product._id });
+
+  res.status(201).json({ success: true, message: "Продуктът е създаден.", data: { product } });
 });
 
 export const updateProduct = catchAsync(async (req, res, next) => {
-  if (!mongoose.isValidObjectId(req.params.id)) {
-    return next(new AppError("Invalid product id", 400));
-  }
+  const product = await Product.findById(req.params.id);
+  if (!product) return next(new AppError("Продуктът не е намерен.", 404));
 
-  const allowed = [
-    "name",
-    "description",
-    "type",
-    "features",
-    "quantityType",
-    "quantity",
-    "price",
-    "isActive",
-  ];
+  const oldImages = product.images.map((img) => img.toObject());
 
-  const update = {};
-
-  for (const field of allowed) {
-    if (req.body[field] !== undefined) {
-      update[field] = req.body[field];
-    }
-  }
-  let existingImages = [];
-
+  // existingImages: publicId-та (или url-и) на запазените снимки, в желания ред
+  let images = oldImages;
   if (req.body.existingImages !== undefined) {
-    try {
-      existingImages =
-        typeof req.body.existingImages === "string"
-          ? JSON.parse(req.body.existingImages)
-          : req.body.existingImages;
-    } catch (error) {
-      return res.status(400).json({
-        success: false,
-        message: "Невалиден списък със съществуващи снимки.",
-      });
-    }
+    const keep = parseArrayField(req.body.existingImages);
+    images = keep
+      .map((key) => oldImages.find((img) => img.publicId === key || img.url === key))
+      .filter(Boolean);
+  }
+  images = [...images, ...(req.uploadedImages || [])];
+
+  if (!images.length) return next(new AppError("Продуктът трябва да има поне едно изображение.", 400));
+  if (images.length > MAX_PRODUCT_IMAGES) {
+    return next(new AppError(`Максимум ${MAX_PRODUCT_IMAGES} изображения на продукт.`, 400));
   }
 
-  if (!Array.isArray(existingImages)) {
-    return res.status(400).json({
-      success: false,
-      message: "existingImages трябва да бъде масив.",
-    });
-  }
+  product.set({ ...buildProductPayload(req.body), images });
+  await product.save();
 
-  existingImages = existingImages
-    .map((image) => String(image).trim())
-    .filter(Boolean);
+  // Едва след успешен запис трием премахнатите снимки от Cloudinary
+  await deleteRemovedImages(oldImages, images);
+  await logAction(req, { action: "product.update", entityType: "Product", entityId: product._id });
 
-  const newImages = Array.isArray(req.uploadedImages)
-    ? req.uploadedImages
-    : [];
-  const images = [...existingImages, ...newImages].slice(0, 5);
-
-  update.images = images;
-
-  const product = await Product.findByIdAndUpdate(
-    req.params.id,
-    { $set: update },
-    {
-      new: true,
-      runValidators: true,
-    },
-  );
-
-  if (!product) {
-    return next(new AppError("Product not found", 404));
-  }
-
-  res.status(200).json({
-    success: true,
-    data: {
-      product,
-    },
-  });
+  res.status(200).json({ success: true, message: "Продуктът е обновен.", data: { product } });
 });
 
 export const deleteProduct = catchAsync(async (req, res, next) => {
-  if (!mongoose.isValidObjectId(req.params.id)) {
-    return next(new AppError('Invalid product id', 400));
-  }
-
   const product = await Product.findByIdAndDelete(req.params.id);
+  if (!product) return next(new AppError("Продуктът не е намерен.", 404));
 
-  if (!product) return next(new AppError('Product not found', 404));
+  await Promise.all([
+    deleteImages(product.images),
+    Favorite.deleteMany({ product: product._id }),
+    Review.deleteMany({ product: product._id }),
+    Cart.updateMany({}, { $pull: { items: { product: product._id } } }),
+  ]);
+  await logAction(req, { action: "product.delete", entityType: "Product", entityId: product._id });
 
-  res.status(200).json({
-    success: true,
-    data: null,
-  });
-});
-
-
-export const restoreProduct = catchAsync(async (req, res, next) => {
-  if (!mongoose.isValidObjectId(req.params.id)) {
-    return next(new AppError("Invalid product id", 400));
-  }
-
-  const product = await Product.findByIdAndUpdate(
-    req.params.id,
-    { $set: { isActive: true } },
-    { new: true },
-  );
-
-  if (!product) return next(new AppError("Product not found", 404));
-
-  res.status(200).json({
-    success: true,
-    data: { product },
-  });
+  res.status(200).json({ success: true, message: "Продуктът е изтрит." });
 });

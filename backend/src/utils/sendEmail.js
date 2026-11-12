@@ -1,30 +1,38 @@
 import nodemailer from "nodemailer";
+import { env } from "../config/env.js";
 
-const sendEmail = (options) => {
-  const transporter = nodemailer.createTransport({
-    host: String(process.env.SMTP_HOST || "sandbox.smtp.mailtrap.io"),
-    port: Number(process.env.SMTP_PORT) || 2525,
-    auth: {
-      user: String(process.env.SMTP_USER || "74b74408257584"), // Подсигуряваме като текст
-      pass: String(process.env.SMTP_PASS || "bef3003cfea824"),
-    },
-  });
+let transporter = null;
 
-  const mailOptions = {
-    from: process.env.EMAIL_FROM || "no-reply@example.com",
-    to: options.to,
-    subject: options.subject,
-    text: options.text,
-    html: options.html, // Оставете го, nodemailer го поддържа перфектно!
-  };
+const getTransporter = () => {
+  if (!env.smtp.isConfigured) return null;
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      host: env.smtp.host,
+      port: env.smtp.port,
+      secure: env.smtp.port === 465,
+      auth: { user: env.smtp.user, pass: env.smtp.pass },
+    });
+  }
+  return transporter;
+};
 
-  // Използваме callback функцията точно както е в документацията им
-  transporter.sendMail(mailOptions, (error, info) => {
-    if (error) {
-      return console.error("Грешка при пращане на имейл:", error.message);
-    }
-    console.log("Имейлът е изпратен успешно до Mailtrap! ID: %s", info.messageId);
-  });
+// Връща true при успешно изпращане. Ако SMTP не е настроен,
+// съдържанието се логва в конзолата (удобно при разработка).
+const sendEmail = async ({ to, subject, text, html, replyTo }) => {
+  const mailer = getTransporter();
+
+  if (!mailer) {
+    console.info(`✉️  [SMTP не е настроен] До: ${to} | Тема: ${subject}\n${text || ""}`);
+    return false;
+  }
+
+  try {
+    await mailer.sendMail({ from: env.smtp.from, to, subject, text, html, replyTo });
+    return true;
+  } catch (error) {
+    console.error("Грешка при изпращане на имейл:", error.message);
+    return false;
+  }
 };
 
 export default sendEmail;

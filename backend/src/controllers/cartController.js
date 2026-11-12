@@ -1,216 +1,83 @@
-import mongoose from "mongoose";
 import Cart from "../models/Cart.js";
 import Product from "../models/Product.js";
 import catchAsync from "../utils/catchAsync.js";
 import AppError from "../utils/AppError.js";
+import { getCartWithTotals, getOrCreateCart, normalizeQuantity } from "../services/cartService.js";
 
-const normalizeQuantity = (quantity, quantityType) => {
-  const value = Number(quantity);
-
-  if (!Number.isFinite(value) || value <= 0) return null;
-
-  if (quantityType === "piece" && !Number.isInteger(value)) {
-    return null;
-  }
-
-  return value;
+const sendCart = async (req, res, message) => {
+  const data = await getCartWithTotals(req.user._id);
+  res.status(200).json({ success: true, ...(message && { message }), data });
 };
 
-const buildCartResponse = async (userId) => {
-  const cart = await Cart.findOne({ user: userId })
-    .populate({
-      path: "items.product",
-      match: { isActive: true },
-    })
-    .lean();
-
-  if (!cart) {
-    return {
-      items: [],
-      summary: {
-        itemsCount: 0,
-        subtotal: 0,
-        total: 0,
-      },
-    };
-  }
-
-  let itemsCount = 0;
-  let subtotal = 0;
-
-  const items = [];
-
-  for (const item of cart.items) {
-    if (!item.product) continue;
-
-    const lineTotal = Number((item.product.price * item.quantity).toFixed(2));
-
-    itemsCount += item.quantity;
-    subtotal += lineTotal;
-
-    items.push({
-      product: item.product,
-      quantity: item.quantity,
-      unitPrice: item.product.price,
-      lineTotal,
-    });
-  }
-
-  subtotal = Number(subtotal.toFixed(2));
-
-  return {
-    items,
-    summary: {
-      itemsCount,
-      subtotal,
-      total: subtotal,
-    },
-  };
+const findActiveProduct = async (productId) => {
+  const product = await Product.findOne({ _id: productId, isActive: true });
+  if (!product) throw new AppError("Продуктът не е намерен или не е активен.", 404);
+  return product;
 };
 
-export const getCart = catchAsync(async (req, res) => {
-  const data = await buildCartResponse(req.user._id);
+export const getCart = catchAsync(async (req, res) => sendCart(req, res));
 
-  res.status(200).json({
-    success: true,
-    data,
-  });
-});
+export const addItem = catchAsync(async (req, res) => {
+  const { productId, quantity = 1 } = req.body;
+  const product = await findActiveProduct(productId);
+  const cart = await getOrCreateCart(req.user._id);
 
-export const addItem = catchAsync(async (req, res, next) => {
-  const { productId, quantity } = req.body;
+  const existing = cart.items.find((item) => String(item.product) === String(product._id));
+  const newQuantity = normalizeQuantity((existing?.quantity || 0) + Number(quantity), product);
 
-  if (!mongoose.isValidObjectId(productId)) {
-    return next(new AppError("Invalid product id", 400));
-  }
-
-  const product = await Product.findById(productId);
-
-  if (!product) return next(new AppError("Product not found", 404));
-  if (!product.isActive) {
-    return next(new AppError("Product is inactive", 409));
-  }
-
-  const normalized = normalizeQuantity(quantity, product.quantityType);
-
-  if (normalized === null) {
-    return next(new AppError(
-      product.quantityType === "piece"
-        ? "Quantity must be a positive integer"
-        : "Quantity must be a positive number",
-      400
-    ));
-  }
-
-  const cart = await Cart.findOneAndUpdate(
-    { user: req.user._id },
-    { $setOnInsert: { user: req.user._id, items: [] } },
-    { new: true, upsert: true }
-  );
-
-  const existingItem = cart.items.find(
-    (item) => String(item.product) === String(product._id)
-  );
-
-  if (existingItem) {
-    existingItem.quantity = Number(
-      (existingItem.quantity + normalized).toFixed(6)
-    );
-  } else {
-    cart.items.push({
-      product: product._id,
-      quantity: normalized,
-    });
-  }
+  if (existing) existing.quantity = newQuantity;
+  else cart.items.push({ product: product._id, quantity: newQuantity });
 
   await cart.save();
-
-  const data = await buildCartResponse(req.user._id);
-
-  res.status(200).json({
-    success: true,
-    data,
-  });
+  await sendCart(req, res, "Продуктът е добавен в количката.");
 });
 
 export const updateItem = catchAsync(async (req, res, next) => {
-  const { productId } = req.params;
-  const { quantity } = req.body;
-
-  if (!mongoose.isValidObjectId(productId)) {
-    return next(new AppError("Invalid product id", 400));
-  }
-
-  const product = await Product.findById(productId);
-
-  if (!product) return next(new AppError("Product not found", 404));
-  if (!product.isActive) {
-    return next(new AppError("Product is inactive", 409));
-  }
-
-  const normalized = normalizeQuantity(quantity, product.quantityType);
-
-  if (normalized === null) {
-    return next(new AppError(
-      product.quantityType === "piece"
-        ? "Quantity must be a positive integer"
-        : "Quantity must be a positive number",
-      400
-    ));
-  }
-
+  const product = await findActiveProduct(req.params.productId);
   const cart = await Cart.findOne({ user: req.user._id });
+  const item = cart?.items.find((i) => String(i.product) === String(product._id));
 
-  if (!cart) return next(new AppError("Cart is empty", 404));
+  if (!item) return next(new AppError("Продуктът не е в количката.", 404));
 
-  const item = cart.items.find(
-    (cartItem) => String(cartItem.product) === String(productId)
-  );
-
-  if (!item) return next(new AppError("Product is not in cart", 404));
-
-  item.quantity = normalized;
+  item.quantity = normalizeQuantity(req.body.quantity, product);
   await cart.save();
-
-  const data = await buildCartResponse(req.user._id);
-
-  res.status(200).json({
-    success: true,
-    data,
-  });
+  await sendCart(req, res);
 });
 
 export const removeItem = catchAsync(async (req, res) => {
-  const { productId } = req.params;
-
-  await Cart.updateOne(
-    { user: req.user._id },
-    { $pull: { items: { product: productId } } }
-  );
-
-  const data = await buildCartResponse(req.user._id);
-
-  res.status(200).json({
-    success: true,
-    data,
-  });
+  await Cart.updateOne({ user: req.user._id }, { $pull: { items: { product: req.params.productId } } });
+  await sendCart(req, res, "Продуктът е премахнат от количката.");
 });
 
 export const clearCart = catchAsync(async (req, res) => {
-  await Cart.updateOne(
-    { user: req.user._id },
-    { $set: { items: [] } }
-  );
+  await Cart.updateOne({ user: req.user._id }, { $set: { items: [] } });
+  await sendCart(req, res, "Количката е изпразнена.");
+});
 
-  res.status(200).json({
-    success: true,
-    data: {
-      items: [],
-      summary: {
-        itemsCount: 0,
-        subtotal: 0,
-        total: 0,
-      },
-    },
+// Слива количката на госта (от localStorage) с тази в профила след вход
+export const mergeCart = catchAsync(async (req, res) => {
+  const incoming = Array.isArray(req.body.items) ? req.body.items.slice(0, 100) : [];
+  const cart = await getOrCreateCart(req.user._id);
+
+  const products = await Product.find({
+    _id: { $in: incoming.map((i) => i.productId) },
+    isActive: true,
   });
+
+  for (const product of products) {
+    const guestItem = incoming.find((i) => String(i.productId) === String(product._id));
+    const existing = cart.items.find((i) => String(i.product) === String(product._id));
+    const desired = (existing?.quantity || 0) + Number(guestItem.quantity || 0);
+
+    // Количеството се ограничава до наличността вместо да връща грешка
+    let quantity = Math.min(desired, product.stock);
+    if (product.unit === "piece") quantity = Math.floor(quantity);
+    if (quantity <= 0) continue;
+
+    if (existing) existing.quantity = quantity;
+    else cart.items.push({ product: product._id, quantity });
+  }
+
+  await cart.save();
+  await sendCart(req, res);
 });

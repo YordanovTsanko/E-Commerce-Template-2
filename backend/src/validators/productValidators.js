@@ -1,112 +1,51 @@
 import { body, param, query } from "express-validator";
+import { PRODUCT_UNITS } from "../constants/index.js";
 
-const objectIdParam = param("id").isMongoId().withMessage("Invalid id");
+export const idParam = [param("id").isMongoId().withMessage("Невалидно id.")];
 
-export const productIdParamValidation = [objectIdParam];
+const priceRule = (field, label) =>
+  body(field)
+    .isFloat({ min: 0, max: 10_000_000 })
+    .withMessage(`${label} трябва да е положително число.`)
+    .bail()
+    .custom((value) => /^\d+([.,]\d{1,2})?$/.test(String(value)))
+    .withMessage(`${label} може да има максимум 2 знака след десетичната запетая.`)
+    .customSanitizer((value) => Number(String(value).replace(",", ".")));
 
-export const createProductValidation = [
-  body("images").custom((value, { req }) => {
-    if (!req.files || !req.files.length) {
-      throw new Error("Images Error: Трябва да качите поне един файл.");
-    }
-    return true;
-  }),
+const productFields = (optional) => {
+  const opt = (chain) => (optional ? chain.optional() : chain);
+  return [
+    opt(body("name")).trim().isLength({ min: 1, max: 150 }).withMessage("Заглавието е задължително (до 150 символа)."),
+    opt(body("description"))
+      .trim()
+      .isLength({ min: 1, max: 5000 })
+      .withMessage("Описанието е задължително (до 5000 символа)."),
+    optional ? priceRule("price", "Цената").optional() : priceRule("price", "Цената"),
+    body("salePrice")
+      .optional({ values: "falsy" })
+      .custom((value) => value === "null" || /^\d+([.,]\d{1,2})?$/.test(String(value)))
+      .withMessage("Невалидна промоционална цена.")
+      .customSanitizer((value) => (value === "null" ? null : Number(String(value).replace(",", ".")))),
+    opt(body("stock")).isFloat({ min: 0 }).withMessage("Наличността трябва да е 0 или повече."),
+    body("unit").optional().isIn(PRODUCT_UNITS).withMessage("Невалидна мерна единица."),
+    body("category")
+      .optional({ values: "falsy" })
+      .custom((value) => value === "null" || /^[a-f\d]{24}$/i.test(value))
+      .withMessage("Невалидна категория."),
+    body("brand").optional().trim().isLength({ max: 100 }),
+    body("isActive").optional().isIn(["true", "false", true, false]),
+    body("isFeatured").optional().isIn(["true", "false", true, false]),
+  ];
+};
 
-  body("name").isString().trim().isLength({ min: 1, max: 150 }),
+export const createProductValidation = productFields(false);
+export const updateProductValidation = [...idParam, ...productFields(true)];
 
-  body("description").isString().trim().isLength({ min: 1, max: 5000 }),
-
-  body("type").isIn(["vegetables", "fruits", "other"]),
-
-  body("features")
-    .optional()
-    .customSanitizer((value) => {
-      if (typeof value === "string") {
-        try {
-          return JSON.parse(value);
-        } catch (e) {
-          return value;
-        }
-      }
-      return value;
-    })
-    .isArray()
-    .withMessage("Features трябва да бъде масив от данни.")
-    .custom((value) => {
-      if (!Array.isArray(value)) return false;
-      return value.every((feature) => typeof feature === "string");
-    })
-    .withMessage(
-      "Всички елементи във features трябва да бъдат текстове (strings).",
-    ),
-
-  body("quantityType").isIn(["kg", "l", "piece"]),
-
-  body("quantity").isFloat({ min: 0, max: 10000000 }),
-
-  body("price")
-    .isFloat({ min: 0, max: 10000000 })
-    .custom((value) => /^\d+(\.\d{1,2})?$/.test(String(value))),
-];
-
-export const updateProductValidation = [
-  param("id").isMongoId().withMessage("Invalid id"),
-
-  body("name").optional().isString().trim().isLength({ min: 1, max: 150 }),
-
-  body("description")
-    .optional()
-    .isString()
-    .trim()
-    .isLength({ min: 1, max: 5000 }),
-
-  body("type").optional().isString().trim().isLength({ min: 1, max: 100 }),
-
-  body("features")
-    .optional()
-    .customSanitizer((value) => {
-      if (typeof value === "string") {
-        try {
-          return JSON.parse(value);
-        } catch (e) {
-          return value;
-        }
-      }
-      return value;
-    })
-    .isArray()
-    .withMessage("Features трябва да бъде масив от данни.")
-    .custom((value) => {
-      if (!Array.isArray(value)) return false;
-      return value.every((feature) => typeof feature === "string");
-    })
-    .withMessage(
-      "Всички елементи във features трябва да бъдат текстове (strings).",
-    ),
-
-  body("quantityType").optional().isIn(["kg", "l", "piece"]),
-
-  body("quantity").optional().isFloat({ min: 0 }),
-
-  body("price")
-    .optional()
-    .isFloat({ min: 0 })
-    .custom((value) => /^\d+(\.\d{1,2})?$/.test(String(value))),
-
-  body("isActive").optional().isBoolean(),
-];
 export const listProductsValidation = [
   query("page").optional().isInt({ min: 1 }),
-  query("limit").optional().isInt({ min: 1, max: 100 }),
-  query("quantityType").optional().isIn(["kg", "l", "piece"]),
-  query("minPrice").optional().isFloat({ min: 0 }),
-  query("maxPrice").optional().isFloat({ min: 0 }),
-  query("isActive")
-    .optional()
-    .isIn(["true", "false", "all"])
-    .withMessage("Invalid value"),
-  query("sort")
-    .optional()
-    .isIn(["createdAt", "updatedAt", "name", "price", "quantity"]),
-  query("order").optional().isIn(["asc", "desc"]),
+  query("limit").optional().isInt({ min: 1, max: 60 }),
+  query("minPrice").optional({ values: "falsy" }).isFloat({ min: 0 }),
+  query("maxPrice").optional({ values: "falsy" }).isFloat({ min: 0 }),
+  query("rating").optional({ values: "falsy" }).isFloat({ min: 0, max: 5 }),
+  query("search").optional().isString().isLength({ max: 100 }),
 ];

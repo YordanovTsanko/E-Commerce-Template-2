@@ -1,393 +1,134 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import { ROLES, ROLE_VALUES, USER_STATUSES } from "../constants/index.js";
+
+const imageSchema = new mongoose.Schema(
+  { url: { type: String, required: true }, publicId: { type: String, default: null } },
+  { _id: false },
+);
+
+const addressSchema = new mongoose.Schema(
+  {
+    fullName: { type: String, trim: true, maxlength: 100, default: null },
+    phone: { type: String, trim: true, maxlength: 30, default: null },
+    city: { type: String, trim: true, maxlength: 100, default: null },
+    postalCode: { type: String, trim: true, maxlength: 20, default: null },
+    street: { type: String, trim: true, maxlength: 250, default: null },
+    country: { type: String, trim: true, maxlength: 100, default: "България" },
+  },
+  { _id: false },
+);
 
 const userSchema = new mongoose.Schema(
   {
-    // =========================
-    // BASIC INFO
-    // =========================
     email: {
       type: String,
-      required: true,
+      required: [true, "Имейлът е задължителен"],
       unique: true,
       lowercase: true,
       trim: true,
-      index: true,
     },
+    password: { type: String, required: true, minlength: 8, select: false },
+    firstName: { type: String, trim: true, maxlength: 50, default: null },
+    lastName: { type: String, trim: true, maxlength: 50, default: null },
+    phone: { type: String, trim: true, maxlength: 30, default: null },
+    avatar: { type: imageSchema, default: null },
+    address: { type: addressSchema, default: () => ({}) },
 
-    password: {
-      type: String,
-      required: true,
-      minlength: 8,
-      select: false,
-    },
+    // ===== Роли: поддържат се и role, и булеви флагове admin / superAdmin =====
+    role: { type: String, enum: ROLE_VALUES, default: ROLES.USER, index: true },
+    admin: { type: Boolean, default: false },
+    superAdmin: { type: Boolean, default: false },
 
-    firstName: {
-      type: String,
-      trim: true,
-      maxlength: 50,
-      default: null,
-    },
+    status: { type: String, enum: USER_STATUSES, default: "pending", index: true },
 
-    lastName: {
-      type: String,
-      trim: true,
-      maxlength: 50,
-      default: null,
-    },
+    emailVerified: { type: Boolean, default: false },
+    emailVerifiedAt: { type: Date, default: null },
+    emailVerificationToken: { type: String, select: false },
+    emailVerificationExpires: { type: Date, select: false },
 
-    username: {
-      type: String,
-      unique: true,
-      sparse: true,
-      lowercase: true,
-      trim: true,
-      minlength: 3,
-      maxlength: 30,
-    },
+    passwordChangedAt: { type: Date, default: null },
+    failedLoginAttempts: { type: Number, default: 0, select: false },
+    lockUntil: { type: Date, default: null, select: false },
 
-    phone: {
-      type: String,
-      trim: true,
-      default: null,
-    },
+    lastLoginAt: { type: Date, default: null },
+    lastLoginIp: { type: String, default: null, select: false },
 
-    avatar: {
-      type: String,
-      default: null,
-    },
-
-    bio: {
-      type: String,
-      maxlength: 500,
-      default: "",
-    },
-
-    // =========================
-    // ROLE & ACCOUNT STATUS
-    // =========================
-    role: {
-      type: String,
-      enum: ["user", "moderator", "admin", "super_admin"],
-      default: "user",
-      index: true,
-    },
-
-    status: {
-      type: String,
-      enum: ["active", "suspended", "banned", "pending"],
-      default: "pending",
-      index: true,
-    },
-
-    // =========================
-    // VERIFICATION
-    // =========================
-    emailVerified: {
-      type: Boolean,
-      default: false,
-    },
-
-    emailVerifiedAt: {
-      type: Date,
-      default: null,
-    },
-
-    emailVerificationToken: {
-      type: String,
-      select: false,
-    },
-
-    emailVerificationExpires: {
-      type: Date,
-      select: false,
-    },
-
-    phoneVerified: {
-      type: Boolean,
-      default: false,
-    },
-
-    phoneVerifiedAt: {
-      type: Date,
-      default: null,
-    },
-
-    // =========================
-    // PASSWORD / SECURITY
-    // =========================
-    passwordChangedAt: {
-      type: Date,
-      default: null,
-    },
-
-    passwordResetToken: {
-      type: String,
-      select: false,
-    },
-
-    passwordResetExpires: {
-      type: Date,
-      select: false,
-    },
-
-    failedLoginAttempts: {
-      type: Number,
-      default: 0,
-    },
-
-    lockUntil: {
-      type: Date,
-      default: null,
-    },
-
-    twoFactorEnabled: {
-      type: Boolean,
-      default: false,
-    },
-
-    twoFactorSecret: {
-      type: String,
-      select: false,
-    },
-
-    // =========================
-    // LOGIN INFORMATION
-    // =========================
-    lastLoginAt: {
-      type: Date,
-      default: null,
-    },
-
-    lastLoginIp: {
-      type: String,
-      default: null,
-      select: false,
-    },
-
-    lastLoginUserAgent: {
-      type: String,
-      default: null,
-      select: false,
-    },
-
-    // =========================
-    // PREFERENCES
-    // =========================
-    preferences: {
-      language: {
-        type: String,
-        default: "en",
-      },
-
-      timezone: {
-        type: String,
-        default: "UTC",
-      },
-
-      theme: {
-        type: String,
-        enum: ["light", "dark", "system"],
-        default: "system",
-      },
-
-      marketingEmails: {
-        type: Boolean,
-        default: true,
-      },
-
-      notifications: {
-        type: Boolean,
-        default: true,
-      },
-    },
-
-    // =========================
-    // ADDRESS
-    // =========================
-    address: {
-      country: {
-        type: String,
-        default: null,
-      },
-
-      city: {
-        type: String,
-        default: null,
-      },
-
-      state: {
-        type: String,
-        default: null,
-      },
-
-      postalCode: {
-        type: String,
-        default: null,
-      },
-
-      street: {
-        type: String,
-        default: null,
-      },
-    },
-
-    // =========================
-    // SOCIAL / EXTERNAL ACCOUNTS
-    // =========================
-    socialAccounts: {
-      googleId: {
-        type: String,
-        default: null,
-        select: false,
-      },
-
-      githubId: {
-        type: String,
-        default: null,
-        select: false,
-      },
-
-      facebookId: {
-        type: String,
-        default: null,
-        select: false,
-      },
-    },
-
-    // =========================
-    // SUBSCRIPTION
-    // =========================
-    subscription: {
-      plan: {
-        type: String,
-        enum: ["free", "basic", "pro", "enterprise"],
-        default: "free",
-      },
-
-      status: {
-        type: String,
-        enum: ["active", "trialing", "past_due", "canceled", "expired"],
-        default: "active",
-      },
-
-      startedAt: {
-        type: Date,
-        default: null,
-      },
-
-      expiresAt: {
-        type: Date,
-        default: null,
-      },
-    },
-
-    // =========================
-    // ACCOUNT MANAGEMENT
-    // =========================
-    isOnline: {
-      type: Boolean,
-      default: false,
-    },
-
-    lastSeenAt: {
-      type: Date,
-      default: null,
-    },
-
-    deletedAt: {
-      type: Date,
-      default: null,
-    },
-
-    deleted: {
-      type: Boolean,
-      default: false,
-      index: true,
-    },
+    deleted: { type: Boolean, default: false, index: true },
+    deletedAt: { type: Date, default: null },
   },
   {
     timestamps: true,
-
-    // Prevent fields that start with $ or contain dots
-    strict: true,
-
-    // Don't allow unnecessary internal fields in JSON
     toJSON: {
-      transform: function (doc, ret) {
+      virtuals: true,
+      transform: (doc, ret) => {
         delete ret.password;
-        delete ret.passwordResetToken;
-        delete ret.passwordResetExpires;
         delete ret.emailVerificationToken;
         delete ret.emailVerificationExpires;
-        delete ret.twoFactorSecret;
         delete ret.failedLoginAttempts;
         delete ret.lockUntil;
         delete ret.lastLoginIp;
-        delete ret.lastLoginUserAgent;
-
+        delete ret.__v;
+        delete ret.id;
         return ret;
       },
     },
   },
 );
 
-// =========================
-// INDEXES
-// =========================
-
-userSchema.index({ role: 1, status: 1 });
-userSchema.index({ "subscription.plan": 1 });
 userSchema.index({ createdAt: -1 });
 
-// =========================
-// PASSWORD HASHING
-// =========================
+userSchema.virtual("fullName").get(function fullName() {
+  return [this.firstName, this.lastName].filter(Boolean).join(" ") || this.email;
+});
 
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) {
-    return next();
+userSchema.virtual("isAdmin").get(function isAdminVirtual() {
+  return this.role === ROLES.ADMIN || this.role === ROLES.SUPER_ADMIN;
+});
+
+userSchema.virtual("isSuperAdmin").get(function isSuperAdminVirtual() {
+  return this.role === ROLES.SUPER_ADMIN;
+});
+
+// ===== Синхронизация role <-> флагове =====
+// Ако е променено role -> флаговете се изчисляват от него.
+// Ако са променени само флаговете -> role се изчислява от тях.
+userSchema.pre("validate", function syncRoles(next) {
+  const roleChanged = this.isModified("role") && !this.$isDefault("role");
+  const flagsChanged = this.isModified("admin") || this.isModified("superAdmin");
+
+  if (!roleChanged && flagsChanged) {
+    if (this.superAdmin) this.role = ROLES.SUPER_ADMIN;
+    else if (this.admin) this.role = ROLES.ADMIN;
+    else this.role = ROLES.USER;
   }
 
-  const salt = await bcrypt.genSalt(12);
-
-  this.password = await bcrypt.hash(this.password, salt);
-  this.passwordChangedAt = new Date();
-
+  this.superAdmin = this.role === ROLES.SUPER_ADMIN;
+  this.admin = this.role === ROLES.ADMIN || this.role === ROLES.SUPER_ADMIN;
   next();
 });
 
-// =========================
-// PASSWORD CHECK
-// =========================
+userSchema.pre("save", async function hashPassword(next) {
+  if (!this.isModified("password")) return next();
 
-userSchema.methods.comparePassword = async function (password) {
+  this.password = await bcrypt.hash(this.password, 12);
+  // При нов акаунт не маркираме смяна на парола (иначе първият токен би бил невалиден)
+  if (!this.isNew) this.passwordChangedAt = new Date(Date.now() - 1000);
+  next();
+});
+
+userSchema.methods.comparePassword = function comparePassword(password) {
   return bcrypt.compare(password, this.password);
 };
 
-// =========================
-// ACCOUNT HELPERS
-// =========================
-
-userSchema.methods.isAccountLocked = function () {
-  return this.lockUntil && this.lockUntil > Date.now();
+userSchema.methods.isAccountLocked = function isAccountLocked() {
+  return Boolean(this.lockUntil && this.lockUntil > Date.now());
 };
 
-userSchema.methods.isActive = function () {
-  return this.status === "active" && !this.deleted;
+// "pending" (непотвърден имейл) също може да пазарува
+userSchema.methods.canLogin = function canLogin() {
+  return !this.deleted && ["active", "pending"].includes(this.status);
 };
-userSchema.methods.isPending = function () {
-  return this.status === "pending" && !this.deleted;
-};
-
-userSchema.methods.hasRole = function (...roles) {
-  return roles.includes(this.role);
-};
-
-// =========================
-// MODEL
-// =========================
 
 const User = mongoose.model("User", userSchema);
-
 export default User;

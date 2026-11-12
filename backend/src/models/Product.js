@@ -1,80 +1,89 @@
 import mongoose from "mongoose";
+import { imageSchema, cleanJSON } from "./shared.js";
+import { PRODUCT_UNITS } from "../constants/index.js";
+import { makeSlug, uniqueSuffix, round2 } from "../utils/helpers.js";
 
 const productSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true,
+      required: [true, "Заглавието е задължително"],
       trim: true,
-      minlength: 1,
-      maxlength: 150,
+      maxlength: [150, "Заглавието е твърде дълго"],
     },
+    slug: { type: String, unique: true, index: true },
     description: {
       type: String,
-      required: true,
+      required: [true, "Описанието е задължително"],
       trim: true,
       maxlength: 5000,
     },
+    price: { type: Number, required: [true, "Цената е задължителна"], min: 0 },
+    salePrice: {
+      type: Number,
+      default: null,
+      min: 0,
+      validate: {
+        validator(value) {
+          return value === null || value === undefined || value < this.price;
+        },
+        message: "Промоционалната цена трябва да е по-ниска от редовната",
+      },
+    },
+    // Ефективна цена (salePrice или price) – използва се за филтри и сортиране
+    finalPrice: { type: Number, default: 0, index: true },
+
+    category: { type: mongoose.Schema.Types.ObjectId, ref: "Category", default: null, index: true },
+    brand: { type: String, trim: true, maxlength: 100, default: "" },
+    tags: { type: [String], default: [] },
+    features: { type: [String], default: [] },
+
+    unit: { type: String, enum: PRODUCT_UNITS, default: "piece" },
+    stock: { type: Number, required: true, min: [0, "Наличността не може да е отрицателна"], default: 0 },
+    sold: { type: Number, default: 0 },
+
     images: {
-      type: [String],
+      type: [imageSchema],
       default: [],
       validate: {
-        validator: (images) =>
-          Array.isArray(images) &&
-          images.every(
-            (img) => typeof img === "string" && img.trim().length > 0,
-          ),
-        message: "images must be an array of non-empty strings",
+        validator: (images) => images.length > 0,
+        message: "Продуктът трябва да има поне едно изображение",
       },
     },
-    type: {
-      type: String,
-      required: true,
-      enum: ["vegetables", "fruits", "other"],
-      index: true,
-    },
-    features: {
-      type: [String],
-      default: [],
-      validate: {
-        validator: (features) =>
-          Array.isArray(features) &&
-          features.every((feature) => typeof feature === "string"),
-        message: "features must be an array of strings",
-      },
-    },
-    quantityType: {
-      type: String,
-      required: true,
-      enum: ["kg", "l", "piece"],
-      index: true,
-    },
-    quantity: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    price: {
-      type: Number,
-      required: true,
-      min: 0,
-      validate: {
-        validator: (value) =>
-          Number.isFinite(value) && /^\d+(\.\d{1,2})?$/.test(String(value)),
-        message: "Цената трябва да бъде число с максимум две десетични места",
-      },
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
-      index: true,
-    },
+
+    rating: { type: Number, default: 0, min: 0, max: 5 },
+    numReviews: { type: Number, default: 0 },
+
+    isActive: { type: Boolean, default: true, index: true },
+    isFeatured: { type: Boolean, default: false, index: true },
   },
-  { timestamps: true },
+  { timestamps: true, toJSON: cleanJSON, toObject: { virtuals: true } },
 );
 
-productSchema.index({ type: 1, isActive: 1 });
-productSchema.index({ name: "text", description: "text" });
+productSchema.index({ isActive: 1, createdAt: -1 });
+productSchema.index({ isActive: 1, finalPrice: 1 });
+productSchema.index({ isActive: 1, rating: -1 });
+
+productSchema.virtual("inStock").get(function inStock() {
+  return this.stock > 0;
+});
+
+productSchema.virtual("discountPercent").get(function discountPercent() {
+  if (!this.salePrice || !this.price) return 0;
+  return Math.round((1 - this.salePrice / this.price) * 100);
+});
+
+productSchema.pre("validate", function prepare(next) {
+  if (this.salePrice === "" || this.salePrice === 0) this.salePrice = null;
+  this.price = round2(this.price);
+  if (this.salePrice !== null && this.salePrice !== undefined) this.salePrice = round2(this.salePrice);
+  this.finalPrice = this.salePrice ?? this.price;
+
+  if (!this.slug || this.isModified("name")) {
+    this.slug = `${makeSlug(this.name)}-${uniqueSuffix()}`;
+  }
+  next();
+});
 
 const Product = mongoose.model("Product", productSchema);
 export default Product;

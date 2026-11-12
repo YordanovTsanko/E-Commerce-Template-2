@@ -1,33 +1,35 @@
-import { motion } from 'framer-motion';
 import { FaCheckCircle } from 'react-icons/fa';
-import { SectionTitle } from '../components/SectionTitle';
+import { PageTransition } from '../components/common/PageTransition';
+import { SectionTitle } from '../components/common/SectionTitle';
+import { Panel } from '../components/ui';
+import { SITE } from '../config/site';
 
 const items = [
-  'Добра папкова структура: pages, components и store.',
-  'Всички компоненти са написани като arrow functions.',
-  'Лесен за разширяване старт за реален бизнес сайт.',
-  'Подходящ за бъдещи секции, форми и CMS интеграции.',
+  'Внимателно подбрани продукти от доверени доставчици.',
+  'Бърза доставка до всеки адрес в страната.',
+  'Сигурно пазаруване и защитени лични данни.',
+  'Лесно връщане и отзивчиво обслужване на клиенти.',
 ];
 
-export const About = () => {
-  return (
-    <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} transition={{ duration: 0.25 }} className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
-      <SectionTitle
-        eyebrow="За проекта"
-        title="Подреден старт за истинско приложение"
-        description="Този frontend е организиран така, че да можеш лесно да добавяш нови страници, компоненти и логика без да губиш четимост."
-      />
+const About = () => (
+  <PageTransition title="За нас" className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+    <SectionTitle
+      eyebrow="За нас"
+      title={`Добре дошли в ${SITE.name}`}
+      description="Създадохме този магазин с една цел – да направим онлайн пазаруването лесно, бързо и приятно. Всеки продукт е подбран с грижа, а всяка поръчка – обработена с внимание."
+    />
 
-      <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/20 backdrop-blur">
-        <div className="grid gap-3 sm:grid-cols-2">
-          {items.map((item) => (
-            <div key={item} className="flex items-start gap-3 rounded-3xl border border-white/10 bg-slate-950/40 p-4">
-              <FaCheckCircle className="mt-1 shrink-0 text-emerald-300" />
-              <p className="text-slate-200">{item}</p>
-            </div>
-          ))}
-        </div>
+    <Panel>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {items.map((item) => (
+          <div key={item} className="flex items-start gap-3 rounded-3xl border border-white/10 bg-slate-950/40 p-4">
+            <FaCheckCircle className="mt-1 shrink-0 text-emerald-300" />
+            <p className="text-slate-200">{item}</p>
+          </div>
+        ))}
       </div>
-    </motion.section>
-  );
-};
+    </Panel>
+  </PageTransition>
+);
+
+export default About;

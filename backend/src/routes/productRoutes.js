@@ -1,62 +1,43 @@
 import express from "express";
-
 import {
   getProducts,
+  getPriceRange,
   getProduct,
+  getRelatedProducts,
   createProduct,
   updateProduct,
   deleteProduct,
-  restoreProduct,
 } from "../controllers/productController.js";
-
-import { protect, optionalAuth } from "../middleware/auth.js";
-import restrictTo from "../middleware/restrictTo.js";
+import { getProductReviews, upsertReview } from "../controllers/reviewController.js";
+import { optionalAuth, protect, adminOnly } from "../middleware/auth.js";
 import validate from "../middleware/validate.js";
-import { uploadProductImages } from "../middleware/uploadImage.js";
-
+import { uploadImages } from "../middleware/upload.js";
+import { IMAGE_FOLDERS } from "../config/cloudinary.js";
+import { MAX_PRODUCT_IMAGES } from "../constants/index.js";
 import {
+  idParam,
   createProductValidation,
   updateProductValidation,
-  productIdParamValidation,
   listProductsValidation,
 } from "../validators/productValidators.js";
+import { reviewValidation } from "../validators/reviewValidators.js";
 
 const router = express.Router();
+const productImages = uploadImages({ field: "images", maxCount: MAX_PRODUCT_IMAGES, folder: IMAGE_FOLDERS.products });
 
-// Публични рутове (с опционална автентикация)
+// ===== Публични =====
 router.get("/", optionalAuth, listProductsValidation, validate, getProducts);
-router.get(
-  "/:id",
-  optionalAuth,
-  productIdParamValidation,
-  validate,
-  getProduct,
-);
+router.get("/price-range", getPriceRange);
+router.get("/:idOrSlug", optionalAuth, getProduct);
+router.get("/:idOrSlug/related", optionalAuth, getRelatedProducts);
 
-// Защита на следващите рутове — само за влезли администратори
-router.use(protect, restrictTo("super_admin", "admin"));
+// ===== Отзиви =====
+router.get("/:id/reviews", idParam, validate, getProductReviews);
+router.post("/:id/reviews", protect, reviewValidation, validate, upsertReview);
 
-router.post(
-  "/",
-  uploadProductImages,
-  createProductValidation,
-  validate,
-  createProduct,
-);
-router.patch(
-  "/:id",
-  uploadProductImages,
-  updateProductValidation,
-  validate,
-  updateProduct,
-);
-
-router.delete("/:id", productIdParamValidation, validate, deleteProduct);
-router.patch(
-  "/:id/restore",
-  productIdParamValidation,
-  validate,
-  restoreProduct,
-);
+// ===== Админ =====
+router.post("/", adminOnly, productImages, createProductValidation, validate, createProduct);
+router.patch("/:id", adminOnly, productImages, updateProductValidation, validate, updateProduct);
+router.delete("/:id", adminOnly, idParam, validate, deleteProduct);
 
 export default router;

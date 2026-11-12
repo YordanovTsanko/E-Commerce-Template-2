@@ -1,22 +1,30 @@
 import rateLimit from "express-rate-limit";
 
-// Generic limiter for login/register/password-reset endpoints,
-// to slow down brute-force and credential-stuffing attempts.
+const limitMessage = (message) => ({ success: false, status: "fail", message });
+
+// За вход/регистрация/забравена парола – защита от brute-force
 export const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 7,
+  windowMs: 15 * 60 * 1000,
+  max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: {
-    status: "fail",
-    message: "Твърде много опити. Опитайте отново след 15 минути.",
-  },
+  message: limitMessage("Твърде много опити. Опитайте отново след 15 минути."),
 });
 
-// Looser limiter for general API traffic.
+// Общ лимит за API
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  max: 1000,
   standardHeaders: true,
   legacyHeaders: false,
+  message: limitMessage("Твърде много заявки. Опитайте отново по-късно."),
+});
+
+// Форма за контакт
+export const contactLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: limitMessage("Изпратихте твърде много съобщения. Опитайте отново по-късно."),
 });

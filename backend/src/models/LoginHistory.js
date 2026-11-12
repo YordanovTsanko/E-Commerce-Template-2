@@ -5,7 +5,7 @@ const loginHistorySchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      default: null,
       index: true,
     },
 
@@ -36,6 +36,7 @@ const loginHistorySchema = new mongoose.Schema(
         null,
         "invalid_credentials",
         "account_inactive",
+        "account_locked",
         "account_suspended",
         "account_banned",
         "email_not_verified",

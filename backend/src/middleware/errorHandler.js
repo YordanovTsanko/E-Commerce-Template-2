@@ -1,74 +1,59 @@
 import AppError from "../utils/AppError.js";
+import { env } from "../config/env.js";
 
-const handleCastErrorDB = (err) => {
-  return new AppError(`Невалидна стойност за поле ${err.path}: ${err.value}`, 400);
+const FIELD_LABELS = {
+  email: "имейл",
+  name: "име",
+  slug: "адрес (slug)",
+  username: "потребителско име",
+  orderNumber: "номер на поръчка",
 };
 
-const handleDuplicateFieldsDB = (err) => {
-  const field = Object.keys(err.keyValue || {})[0];
-  const value = err.keyValue ? err.keyValue[field] : "";
-  return new AppError(`Стойността "${value}" за поле "${field}" вече съществува.`, 409);
-};
+const normalizeError = (err) => {
+  if (err instanceof AppError) return err;
 
-const handleValidationErrorDB = (err) => {
-  const messages = Object.values(err.errors).map((e) => e.message);
-  return new AppError(`Невалидни данни: ${messages.join(". ")}`, 400);
-};
-
-const handleJWTError = () =>
-  new AppError("Невалиден токен. Моля, влезте отново.", 401);
-
-const handleJWTExpiredError = () =>
-  new AppError("Токенът е изтекъл. Моля, влезте отново.", 401);
-
-const sendErrorDev = (err, res) => {
-  res.status(err.statusCode).json({
-    status: err.status,
-    message: err.message,
-    error: err,
-    stack: err.stack,
-  });
-};
-
-const sendErrorProd = (err, res) => {
-  if (err.isOperational) {
-    return res.status(err.statusCode).json({
-      status: err.status,
-      message: err.message,
-    });
+  if (err.name === "CastError") {
+    return new AppError(`Невалидна стойност за поле "${err.path}".`, 400);
   }
 
-  // Unknown / programming error: don't leak details
-  console.error("UNEXPECTED ERROR:", err);
-  return res.status(500).json({
-    status: "error",
-    message: "Нещо се обърка. Опитайте отново по-късно.",
-  });
+  if (err.code === 11000) {
+    const field = Object.keys(err.keyValue || {})[0];
+    const label = FIELD_LABELS[field] || field;
+    return new AppError(`Запис с това ${label} вече съществува.`, 409);
+  }
+
+  if (err.name === "ValidationError") {
+    const messages = Object.values(err.errors).map((e) => e.message);
+    return new AppError(`Невалидни данни: ${messages.join(". ")}`, 400);
+  }
+
+  if (err.name === "JsonWebTokenError") return new AppError("Невалиден токен. Моля, влезте отново.", 401);
+  if (err.name === "TokenExpiredError") return new AppError("Сесията е изтекла. Моля, влезте отново.", 401);
+
+  if (err.type === "entity.parse.failed") return new AppError("Невалиден JSON в заявката.", 400);
+  if (err.type === "entity.too.large") return new AppError("Заявката е твърде голяма.", 413);
+
+  return null;
 };
 
-// Must be registered LAST, after all routes: app.use(errorHandler)
+// Трябва да е регистриран ПОСЛЕДЕН: app.use(errorHandler)
+// eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, next) => {
-  err.statusCode = err.statusCode || 500;
-  err.status = err.status || "error";
+  const operational = normalizeError(err);
 
-  if (process.env.NODE_ENV === "development") {
-    sendErrorDev(err, res);
-    return;
+  if (!operational) {
+    console.error("НЕОЧАКВАНА ГРЕШКА:", err);
   }
 
-  let error = Object.assign(
-    Object.create(Object.getPrototypeOf(err)),
-    err
-  );
-  error.message = err.message;
+  const statusCode = operational?.statusCode || 500;
+  const message = operational?.message || "Нещо се обърка. Опитайте отново по-късно.";
 
-  if (error.name === "CastError") error = handleCastErrorDB(error);
-  if (error.code === 11000) error = handleDuplicateFieldsDB(error);
-  if (error.name === "ValidationError") error = handleValidationErrorDB(error);
-  if (error.name === "JsonWebTokenError") error = handleJWTError();
-  if (error.name === "TokenExpiredError") error = handleJWTExpiredError();
-
-  sendErrorProd(error, res);
+  res.status(statusCode).json({
+    success: false,
+    status: statusCode < 500 ? "fail" : "error",
+    message,
+    ...(env.isDev && { stack: err.stack, original: err.message }),
+  });
 };
 
 export default errorHandler;
