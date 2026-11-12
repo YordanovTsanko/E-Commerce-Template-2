@@ -60,5 +60,5 @@ export const getOrCreateCart = (userId) =>
   Cart.findOneAndUpdate(
     { user: userId },
     { $setOnInsert: { user: userId, items: [] } },
-    { new: true, upsert: true },
+    { returnDocument: "after", upsert: true },
   );

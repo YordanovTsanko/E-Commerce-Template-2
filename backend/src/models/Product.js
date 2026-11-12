@@ -73,7 +73,7 @@ productSchema.virtual("discountPercent").get(function discountPercent() {
   return Math.round((1 - this.salePrice / this.price) * 100);
 });
 
-productSchema.pre("validate", function prepare(next) {
+productSchema.pre("validate", function prepare() {
   if (this.salePrice === "" || this.salePrice === 0) this.salePrice = null;
   this.price = round2(this.price);
   if (this.salePrice !== null && this.salePrice !== undefined) this.salePrice = round2(this.salePrice);
@@ -82,7 +82,6 @@ productSchema.pre("validate", function prepare(next) {
   if (!this.slug || this.isModified("name")) {
     this.slug = `${makeSlug(this.name)}-${uniqueSuffix()}`;
   }
-  next();
 });
 
 const Product = mongoose.model("Product", productSchema);

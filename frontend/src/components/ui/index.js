@@ -1,6 +1,7 @@
 export { Button } from './Button';
 export { Spinner, FullPageLoader } from './Spinner';
-export { Input, Textarea, Select, Checkbox, inputClass } from './FormField';
+export { Input, Textarea, Checkbox, inputClass } from './FormField';
+export { Select } from './Select';
 export { Panel, Card, Eyebrow } from './Panel';
 export { Badge, StatusBadge } from './Badge';
 export { Skeleton, ProductCardSkeleton, TableSkeleton } from './Skeleton';

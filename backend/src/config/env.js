@@ -1,7 +1,7 @@
 import path from "path";
 import dotenv from "dotenv";
 
-dotenv.config({ path: path.resolve(process.cwd(), ".env") });
+dotenv.config({ path: path.resolve(process.cwd(), ".env"), quiet: true });
 
 const toNumber = (value, fallback) => {
   const parsed = Number(value);
@@ -37,8 +37,8 @@ export const env = {
   },
 
   store: {
-    name: process.env.STORE_NAME || "Магазин",
-    email: process.env.STORE_EMAIL || "hello@example.bg",
+    name: process.env.STORE_NAME || "EcoKoren-Yordanov",
+    email: process.env.STORE_EMAIL || "hello@ecokoren.bg",
     currency: process.env.CURRENCY || "EUR",
     taxRate: toNumber(process.env.TAX_RATE, 0.2),
     pricesIncludeTax: process.env.PRICES_INCLUDE_TAX !== "false",

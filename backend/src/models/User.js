@@ -93,7 +93,7 @@ userSchema.virtual("isSuperAdmin").get(function isSuperAdminVirtual() {
 // ===== Синхронизация role <-> флагове =====
 // Ако е променено role -> флаговете се изчисляват от него.
 // Ако са променени само флаговете -> role се изчислява от тях.
-userSchema.pre("validate", function syncRoles(next) {
+userSchema.pre("validate", function syncRoles() {
   const roleChanged = this.isModified("role") && !this.$isDefault("role");
   const flagsChanged = this.isModified("admin") || this.isModified("superAdmin");
 
@@ -105,16 +105,14 @@ userSchema.pre("validate", function syncRoles(next) {
 
   this.superAdmin = this.role === ROLES.SUPER_ADMIN;
   this.admin = this.role === ROLES.ADMIN || this.role === ROLES.SUPER_ADMIN;
-  next();
 });
 
-userSchema.pre("save", async function hashPassword(next) {
-  if (!this.isModified("password")) return next();
+userSchema.pre("save", async function hashPassword() {
+  if (!this.isModified("password")) return;
 
   this.password = await bcrypt.hash(this.password, 12);
   // При нов акаунт не маркираме смяна на парола (иначе първият токен би бил невалиден)
   if (!this.isNew) this.passwordChangedAt = new Date(Date.now() - 1000);
-  next();
 });
 
 userSchema.methods.comparePassword = function comparePassword(password) {

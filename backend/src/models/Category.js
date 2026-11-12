@@ -20,9 +20,8 @@ const categorySchema = new mongoose.Schema(
   { timestamps: true, toJSON: cleanJSON },
 );
 
-categorySchema.pre("validate", function setSlug(next) {
+categorySchema.pre("validate", function setSlug() {
   if (!this.slug || this.isModified("name")) this.slug = makeSlug(this.name);
-  next();
 });
 
 const Category = mongoose.model("Category", categorySchema);

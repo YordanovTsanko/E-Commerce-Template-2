@@ -48,7 +48,7 @@ export const upsertReview = catchAsync(async (req, res, next) => {
   const review = await Review.findOneAndUpdate(
     { product: req.params.id, user: req.user._id },
     { rating, comment },
-    { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true },
+    { returnDocument: "after", upsert: true, runValidators: true, setDefaultsOnInsert: true },
   ).populate("user", "firstName lastName avatar");
 
   await Review.recalculate(req.params.id);

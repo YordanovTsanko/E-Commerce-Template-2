@@ -15,8 +15,6 @@ import { isAdmin as isAdminUser } from '../../utils/roles';
 
 const roleOptions = Object.entries(ROLES).map(([value, label]) => ({ value, label }));
 const statusOptions = Object.entries(USER_STATUSES).map(([value, s]) => ({ value, label: s.label }));
-const smallSelect =
-  'rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400/50 disabled:opacity-60';
 
 const AdminUsers = () => {
   const { user: me, isSuperAdmin } = useAuth();
@@ -69,19 +67,15 @@ const AdminUsers = () => {
       header: 'Роля',
       render: (u) =>
         isSuperAdmin && canManage(u) ? (
-          <select
-            className={smallSelect}
+          <Select
+            size="sm"
+            className="w-52"
+            aria-label="Роля"
             value={u.role}
+            options={roleOptions}
             disabled={isRowPending(u._id, roleMutation)}
             onChange={(e) => roleMutation.mutate({ id: u._id, role: e.target.value })}
-            aria-label="Роля"
-          >
-            {roleOptions.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
-              </option>
-            ))}
-          </select>
+          />
         ) : (
           <Badge tone={isAdminUser(u) ? 'emerald' : 'slate'}>{ROLES[u.role]}</Badge>
         ),
@@ -91,19 +85,15 @@ const AdminUsers = () => {
       header: 'Статус',
       render: (u) =>
         canManage(u) ? (
-          <select
-            className={smallSelect}
+          <Select
+            size="sm"
+            className="w-40"
+            aria-label="Статус"
             value={u.status}
+            options={statusOptions}
             disabled={isRowPending(u._id, statusMutation)}
             onChange={(e) => statusMutation.mutate({ id: u._id, status: e.target.value })}
-            aria-label="Статус"
-          >
-            {statusOptions.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
+          />
         ) : (
           <StatusBadge value={u.status} meta={USER_STATUSES} />
         ),

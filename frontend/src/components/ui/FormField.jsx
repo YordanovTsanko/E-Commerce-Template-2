@@ -26,21 +26,6 @@ export const Textarea = forwardRef(({ label, error, hint, className, rows = 4, .
 ));
 Textarea.displayName = 'Textarea';
 
-export const Select = forwardRef(({ label, error, hint, className, options = [], placeholder, children, ...props }, ref) => (
-  <Wrapper label={label} error={error} hint={hint} className={className}>
-    <select ref={ref} className={cn(inputClass, 'appearance-none pr-10', error && 'border-rose-400/50')} {...props}>
-      {placeholder !== undefined && <option value="">{placeholder}</option>}
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-      {children}
-    </select>
-  </Wrapper>
-));
-Select.displayName = 'Select';
-
 export const Checkbox = ({ label, className, ...props }) => (
   <label className={cn('inline-flex cursor-pointer items-center gap-3 text-sm text-slate-300', className)}>
     <input type="checkbox" className="h-4 w-4 rounded border-white/20 bg-slate-950/50 accent-emerald-400" {...props} />

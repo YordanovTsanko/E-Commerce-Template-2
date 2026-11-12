@@ -84,7 +84,7 @@ orderSchema.index({ createdAt: -1 });
 orderSchema.index({ user: 1, createdAt: -1 });
 
 // Номер от вида ORD-261112-4F7A2C
-orderSchema.pre("validate", function setOrderNumber(next) {
+orderSchema.pre("validate", function setOrderNumber() {
   if (!this.orderNumber) {
     const d = new Date();
     const datePart = `${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, "0")}${String(
@@ -95,7 +95,6 @@ orderSchema.pre("validate", function setOrderNumber(next) {
   if (this.isNew && !this.statusHistory.length) {
     this.statusHistory.push({ status: this.status, changedBy: this.user });
   }
-  next();
 });
 
 const Order = mongoose.model("Order", orderSchema);
