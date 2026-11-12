@@ -34,7 +34,7 @@ const Orders = () => {
           }}
           placeholder="Всички статуси"
           options={ORDER_STATUSES.map((s) => ({ value: s, label: ORDER_STATUS_META[s].label }))}
-          className="w-56"
+          className="w-full sm:w-56"
         />
       </div>
 
@@ -59,10 +59,10 @@ const Orders = () => {
             <Link
               key={order._id}
               to={`/orders/${order._id}`}
-              className="group grid gap-4 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl shadow-black/20 transition hover:border-emerald-400/30 sm:grid-cols-[1fr_auto_auto] sm:items-center"
+              className="group grid min-w-0 gap-4 rounded-3xl border border-white/10 bg-white/5 p-4 shadow-2xl shadow-black/20 transition hover:border-emerald-400/30 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:p-5"
             >
-              <div>
-                <p className="font-semibold text-white">{order.orderNumber}</p>
+              <div className="min-w-0">
+                <p className="break-all font-semibold text-white">{order.orderNumber}</p>
                 <p className="text-sm text-slate-400">
                   {formatDate(order.createdAt, true)} · {order.items.length} продукта · {PAYMENT_METHODS[order.paymentMethod]?.label}
                 </p>

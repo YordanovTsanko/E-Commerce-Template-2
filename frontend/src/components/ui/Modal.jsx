@@ -23,7 +23,7 @@ export const Modal = ({ open, onClose, title, children, footer, size = 'md' }) =
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-2 backdrop-blur-sm sm:p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -37,18 +37,18 @@ export const Modal = ({ open, onClose, title, children, footer, size = 'md' }) =
             exit={{ opacity: 0, y: 10 }}
             transition={{ duration: 0.2 }}
             className={cn(
-              'flex max-h-[90vh] w-full flex-col rounded-[2rem] border border-white/10 bg-slate-900 shadow-2xl shadow-black/40',
+              'flex max-h-[92dvh] w-full min-w-0 flex-col rounded-3xl sm:max-h-[90vh] sm:rounded-[2rem] border border-white/10 bg-slate-900 shadow-2xl shadow-black/40',
               widths[size],
             )}
           >
-            <div className="flex items-center justify-between gap-4 border-b border-white/10 px-6 py-4">
-              <h2 className="text-lg font-semibold text-white">{title}</h2>
+            <div className="flex items-center justify-between gap-4 border-b border-white/10 px-4 py-4 sm:px-6">
+              <h2 className="min-w-0 break-words text-lg font-semibold text-white">{title}</h2>
               <Button variant="ghost" size="iconSm" onClick={onClose} aria-label="Затвори">
                 <HiOutlineX size={20} />
               </Button>
             </div>
-            <div className="overflow-y-auto px-6 py-5">{children}</div>
-            {footer && <div className="flex flex-wrap justify-end gap-3 border-t border-white/10 px-6 py-4">{footer}</div>}
+            <div className="min-w-0 overflow-y-auto overflow-x-hidden px-4 py-5 sm:px-6">{children}</div>
+            {footer && <div className="flex flex-wrap justify-end gap-3 border-t border-white/10 px-4 py-4 sm:px-6">{footer}</div>}
           </motion.div>
         </motion.div>
       )}

@@ -130,9 +130,9 @@ const AdminProductForm = () => {
         }
       />
 
-      <form onSubmit={submit} noValidate className="grid gap-6 xl:grid-cols-[1fr_360px]">
-        <div className="grid content-start gap-6">
-          <Panel className="grid gap-4">
+      <form onSubmit={submit} noValidate className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid min-w-0 content-start gap-6">
+          <Panel className="grid gap-4 p-4 sm:p-6">
             <Input label="Заглавие *" value={form.name} onChange={set('name')} error={errors.name} maxLength={150} />
             <Textarea label="Описание *" rows={6} value={form.description} onChange={set('description')} error={errors.description} maxLength={5000} />
             <div className="grid gap-4 sm:grid-cols-2">
@@ -148,7 +148,7 @@ const AdminProductForm = () => {
             />
           </Panel>
 
-          <Panel>
+          <Panel className="p-4 sm:p-6">
             <ImageDropzone
               existing={existingImages}
               onRemoveExisting={(img) => setExistingImages((list) => list.filter((i) => i !== img))}
@@ -167,8 +167,8 @@ const AdminProductForm = () => {
           </Panel>
         </div>
 
-        <div className="grid content-start gap-6">
-          <Panel className="grid gap-4">
+        <div className="grid min-w-0 content-start gap-6">
+          <Panel className="grid gap-4 p-4 sm:p-6">
             <h2 className="font-semibold text-white">Цена и наличност</h2>
             <Input label="Цена *" inputMode="decimal" value={form.price} onChange={set('price')} error={errors.price} placeholder="0.00" />
             <Input
@@ -179,7 +179,7 @@ const AdminProductForm = () => {
               error={errors.salePrice}
               hint="Оставете празно, ако няма промоция"
             />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 min-[400px]:grid-cols-2">
               <Input label="Наличност *" inputMode="decimal" value={form.stock} onChange={set('stock')} error={errors.stock} />
               <Select
                 label="Мерна единица"
@@ -190,7 +190,7 @@ const AdminProductForm = () => {
             </div>
           </Panel>
 
-          <Panel className="grid gap-4">
+          <Panel className="grid gap-4 p-4 sm:p-6">
             <h2 className="font-semibold text-white">Организация</h2>
             <Select
               label="Категория"

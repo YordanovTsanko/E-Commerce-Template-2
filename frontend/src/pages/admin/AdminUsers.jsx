@@ -69,7 +69,7 @@ const AdminUsers = () => {
         isSuperAdmin && canManage(u) ? (
           <Select
             size="sm"
-            className="w-52"
+            className="w-44 sm:w-52"
             aria-label="Роля"
             value={u.role}
             options={roleOptions}
@@ -87,7 +87,7 @@ const AdminUsers = () => {
         canManage(u) ? (
           <Select
             size="sm"
-            className="w-40"
+            className="w-36 sm:w-40"
             aria-label="Статус"
             value={u.status}
             options={statusOptions}

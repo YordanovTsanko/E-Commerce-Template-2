@@ -59,7 +59,7 @@ const OrderModal = ({ order, onClose }) => {
       }
     >
       <div className="grid gap-6">
-        <div className="grid gap-4 rounded-3xl border border-white/10 bg-slate-950/40 p-4 sm:grid-cols-3">
+        <div className="grid min-w-0 gap-4 rounded-3xl border border-white/10 bg-slate-950/40 p-3 sm:grid-cols-3 sm:p-4">
           <Select
             label="Статус на поръчката"
             value={status}
@@ -75,12 +75,12 @@ const OrderModal = ({ order, onClose }) => {
           {isCancelled && <p className="text-sm text-slate-400 sm:col-span-3">Отказаните поръчки не могат да бъдат активирани отново.</p>}
         </div>
 
-        <div className="grid gap-6 md:grid-cols-[1fr_280px]">
-          <div className="grid content-start gap-3">
+        <div className="grid min-w-0 grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_280px]">
+          <div className="grid min-w-0 content-start gap-3">
             <h3 className="font-semibold text-white">Продукти</h3>
             <OrderItemsList items={order.items} linkable={false} />
           </div>
-          <div className="grid content-start gap-5">
+          <div className="grid min-w-0 content-start gap-5">
             <div className="grid gap-2">
               <h3 className="font-semibold text-white">Клиент</h3>
               <ShippingAddressCard address={order.shippingAddress} />
@@ -96,7 +96,7 @@ const OrderModal = ({ order, onClose }) => {
         {order.statusHistory?.length > 0 && (
           <div className="grid gap-2">
             <h3 className="font-semibold text-white">История</h3>
-            <ul className="grid gap-1 text-sm text-slate-400">
+            <ul className="grid gap-1 break-words text-sm text-slate-400">
               {[...order.statusHistory].reverse().map((h, i) => (
                 <li key={i}>
                   {formatDate(h.changedAt, true)} — <span className="text-slate-200">{ORDER_STATUS_META[h.status]?.label}</span>

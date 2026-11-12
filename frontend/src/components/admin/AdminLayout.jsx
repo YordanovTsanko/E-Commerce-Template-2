@@ -17,9 +17,9 @@ const linkClass = ({ isActive }) =>
   ].join(' ');
 
 export const AdminLayout = () => (
-  <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
-    <aside className="lg:sticky lg:top-28 lg:self-start">
-      <nav className="flex gap-2 overflow-x-auto rounded-[2rem] border border-white/10 bg-white/5 p-3 shadow-2xl shadow-black/20 backdrop-blur lg:flex-col">
+  <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+    <aside className="min-w-0 lg:sticky lg:top-28 lg:self-start">
+      <nav className="flex gap-2 overflow-x-auto overscroll-x-contain rounded-[2rem] border border-white/10 bg-white/5 p-3 shadow-2xl shadow-black/20 backdrop-blur lg:flex-col">
         {ADMIN_LINKS.map((link) => (
           <NavLink key={link.to} to={link.to} end={link.end} className={linkClass}>
             {link.icon}

@@ -41,9 +41,9 @@ const OrderDetails = () => {
       </Button>
 
       {state?.justPlaced && (
-        <Panel className="flex items-center gap-4 border-emerald-400/30 bg-emerald-400/10">
+        <Panel className="flex min-w-0 items-center gap-4 border-emerald-400/30 bg-emerald-400/10 p-4 sm:p-6">
           <FaCheckCircle className="shrink-0 text-emerald-300" size={28} />
-          <div>
+          <div className="min-w-0">
             <h2 className="text-lg font-semibold text-white">Благодарим ви за поръчката!</h2>
             <p className="text-slate-300">Ще получите потвърждение по имейл. Можете да следите статуса тук.</p>
           </div>
@@ -59,11 +59,11 @@ const OrderDetails = () => {
         <ErrorState error={error} onRetry={refetch} />
       ) : (
         <>
-          <Panel className="grid gap-6">
+          <Panel className="grid min-w-0 gap-6 p-4 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
+              <div className="min-w-0">
                 <Eyebrow>Поръчка</Eyebrow>
-                <h1 className="mt-2 text-2xl font-bold text-white sm:text-3xl">{order.orderNumber}</h1>
+                <h1 className="mt-2 break-all text-xl font-bold text-white sm:text-3xl">{order.orderNumber}</h1>
                 <p className="mt-1 text-sm text-slate-400">Направена на {formatDate(order.createdAt, true)}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -74,14 +74,14 @@ const OrderDetails = () => {
             <OrderTimeline order={order} />
           </Panel>
 
-          <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-            <Panel className="grid content-start gap-4">
+          <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <Panel className="grid min-w-0 content-start gap-4 p-4 sm:p-6">
               <h2 className="text-xl font-semibold text-white">Продукти</h2>
               <OrderItemsList items={order.items} />
             </Panel>
 
-            <div className="grid content-start gap-6">
-              <Panel className="grid gap-4">
+            <div className="grid min-w-0 content-start gap-6">
+              <Panel className="grid min-w-0 gap-4 p-4 sm:p-6">
                 <h2 className="text-xl font-semibold text-white">Обобщение</h2>
                 <OrderTotals order={order} />
                 <p className="text-sm text-slate-400">Плащане: {PAYMENT_METHODS[order.paymentMethod]?.label}</p>
@@ -91,7 +91,7 @@ const OrderDetails = () => {
                   </Button>
                 )}
               </Panel>
-              <Panel className="grid gap-3">
+              <Panel className="grid min-w-0 gap-3 p-4 sm:p-6">
                 <h2 className="text-xl font-semibold text-white">Доставка</h2>
                 <ShippingAddressCard address={order.shippingAddress} />
               </Panel>

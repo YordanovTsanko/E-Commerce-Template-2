@@ -31,7 +31,7 @@ const Cart = () => {
       <SectionTitle eyebrow="Количка" title="Вашата количка" />
 
       {loading && !items.length ? (
-        <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="grid gap-3">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-32" />
@@ -47,8 +47,8 @@ const Cart = () => {
           action={<Button to="/shop">Към магазина</Button>}
         />
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-          <Panel className="grid content-start gap-3 p-4 sm:p-6">
+        <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <Panel className="grid min-w-0 content-start gap-3 p-3 sm:p-6">
             <div className="flex items-center justify-between">
               <p className="text-sm text-slate-400">{items.length} продукта</p>
               <Button variant="ghost" size="sm" icon={<FaTrash size={12} />} onClick={() => setConfirmClear(true)}>

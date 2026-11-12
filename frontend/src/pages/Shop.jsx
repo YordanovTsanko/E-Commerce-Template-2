@@ -210,20 +210,20 @@ const Shop = () => {
               )}
             </div>
 
-            {/* Сортиране, брой продукти и филтри */}
-            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-2 sm:flex sm:items-center sm:gap-3">
-
-              <div className="min-w-0 sm:w-48 sm:flex-none">
+            {/* Сортиране, брой продукти и филтри
+                Мобилно: сортирането на цял ред, отдолу брой/стр. + бутон за филтри */}
+            <div className="flex min-w-0 flex-wrap items-center gap-2 sm:flex-nowrap sm:gap-3">
+              <div className="w-full min-w-0 sm:w-56 sm:flex-none">
                 <Select
                   aria-label="Сортиране"
                   value={filters.sort}
                   onChange={(e) => updateFilters({ sort: e.target.value })}
                   options={SORT_OPTIONS}
-                  className="min-w-0 w-full"
+                  className="w-full min-w-0"
                 />
               </div>
 
-              <div className="min-w-0 sm:w-28 sm:flex-none">
+              <div className="min-w-0 flex-1 sm:w-32 sm:flex-none">
                 <Select
                   aria-label="Продукти на страница"
                   value={filters.limit}
@@ -232,7 +232,7 @@ const Shop = () => {
                     value: String(n),
                     label: `${n} / стр.`,
                   }))}
-                  className="min-w-0 w-full"
+                  className="w-full min-w-0"
                 />
               </div>
 
@@ -287,7 +287,7 @@ const Shop = () => {
               loading={isLoading}
               error={error}
               onRetry={refetch}
-              columns="grid-cols-2 xl:grid-cols-3"
+              columns="grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"
               skeletonCount={6}
               emptyAction={
                 (activeCount > 0 || filters.search) && (

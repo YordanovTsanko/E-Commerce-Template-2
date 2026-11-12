@@ -66,9 +66,14 @@ export const Select = forwardRef(
       const spaceBelow = window.innerHeight - rect.bottom;
       const spaceAbove = rect.top;
       const openUp = spaceBelow < Math.min(MENU_MAX_HEIGHT, items.length * 44 + 16) && spaceAbove > spaceBelow;
+      // Менюто не трябва да излиза извън екрана (телефон) – при липса на място вдясно се подравнява по десния край
+      const viewportMax = window.innerWidth - GAP * 2;
+      const menuMax = Math.min(Math.max(rect.width, 320), viewportMax);
+      const alignRight = rect.left + menuMax > window.innerWidth - GAP;
       setPosition({
-        left: rect.left,
-        width: rect.width,
+        ...(alignRight ? { right: Math.max(window.innerWidth - rect.right, GAP) } : { left: Math.max(rect.left, GAP) }),
+        width: Math.min(rect.width, viewportMax),
+        menuMax: alignRight ? Math.max(Math.min(menuMax, rect.right - GAP), Math.min(rect.width, viewportMax)) : menuMax,
         maxHeight: Math.max(Math.min(MENU_MAX_HEIGHT, (openUp ? spaceAbove : spaceBelow) - GAP * 2), 120),
         ...(openUp ? { bottom: window.innerHeight - rect.top + GAP } : { top: rect.bottom + GAP }),
         openUp,
@@ -222,9 +227,10 @@ export const Select = forwardRef(
             style={{
               position: 'fixed',
               left: position.left,
+              right: position.right,
               minWidth: position.width,
               width: 'max-content',
-              maxWidth: Math.max(position.width, Math.min(320, window.innerWidth - position.left - GAP)),
+              maxWidth: position.menuMax,
               top: position.top,
               bottom: position.bottom,
               maxHeight: position.maxHeight,

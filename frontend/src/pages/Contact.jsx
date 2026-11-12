@@ -15,6 +15,22 @@ const contactItems = [
   { icon: <FaMapMarkerAlt />, label: 'Локация', value: SITE.contacts.location },
 ];
 
+const MAX_WORDS = 2500;
+
+const countWords = (text) => (text.match(/\S+/g) || []).length;
+
+// Отрязва текста до MAX_WORDS думи (при писане или поставяне на дълъг текст)
+const limitWords = (text) => {
+  const regex = /\S+/g;
+  let count = 0;
+  let match;
+  while ((match = regex.exec(text))) {
+    count += 1;
+    if (count > MAX_WORDS) return text.slice(0, match.index).trimEnd();
+  }
+  return text;
+};
+
 const Contact = () => {
   const { user } = useAuth();
   const empty = { name: user ? getUserName(user) : '', email: user?.email || '', message: '' };
@@ -27,6 +43,8 @@ const Contact = () => {
   });
 
   const set = (name) => (e) => setForm((f) => ({ ...f, [name]: e.target.value }));
+  const setMessage = (e) => setForm((f) => ({ ...f, message: limitWords(e.target.value) }));
+  const words = countWords(form.message);
 
   return (
     <PageTransition title="Контакт" className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr]">
@@ -64,16 +82,26 @@ const Contact = () => {
             <Input label="Име" placeholder="Вашето име" required minLength={2} value={form.name} onChange={set('name')} />
             <Input label="Имейл" type="email" placeholder="your@email.com" required value={form.email} onChange={set('email')} />
           </div>
-          <Textarea
-            label="Съобщение"
-            rows={5}
-            placeholder="Напишете съобщението си..."
-            required
-            minLength={10}
-            value={form.message}
-            onChange={set('message')}
-            className="mt-4"
-          />
+          <div className="relative mt-4">
+            <Textarea
+              label="Съобщение"
+              rows={5}
+              placeholder="Напишете съобщението си..."
+              required
+              minLength={10}
+              value={form.message}
+              onChange={setMessage}
+              style={{ resize: 'none', paddingBottom: '2.25rem' }}
+            />
+            <span
+              aria-live="polite"
+              className={`pointer-events-none absolute bottom-3 right-4 text-xs ${
+                words >= MAX_WORDS ? 'text-amber-300' : 'text-slate-500'
+              }`}
+            >
+              {words} / {MAX_WORDS} думи
+            </span>
+          </div>
           <Button type="submit" loading={mutation.isPending} className="mt-5">
             Изпрати съобщение
           </Button>

@@ -72,8 +72,8 @@ const Dashboard = () => {
             ))}
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-            <Panel className="grid content-start gap-4">
+          <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+            <Panel className="grid min-w-0 content-start gap-4 p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-white">Последни поръчки</h2>
                 <Link to="/admin/orders" className="text-sm text-emerald-300 hover:text-emerald-200">
@@ -85,9 +85,9 @@ const Dashboard = () => {
               ) : (
                 <ul className="grid gap-2">
                   {data.recentOrders.map((order) => (
-                    <li key={order._id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-950/40 px-4 py-3">
-                      <div>
-                        <p className="font-medium text-white">{order.orderNumber}</p>
+                    <li key={order._id} className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-950/40 px-3 py-3 sm:px-4">
+                      <div className="min-w-0">
+                        <p className="break-all font-medium text-white">{order.orderNumber}</p>
                         <p className="text-xs text-slate-500">
                           {getUserName(order.user)} · {formatDate(order.createdAt, true)}
                         </p>
@@ -102,7 +102,7 @@ const Dashboard = () => {
               )}
             </Panel>
 
-            <Panel className="grid content-start gap-4">
+            <Panel className="grid min-w-0 content-start gap-4 p-4 sm:p-6">
               <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
                 <FaExclamationTriangle className="text-amber-300" /> Ниска наличност (≤ {data.lowStockThreshold})
               </h2>
@@ -114,13 +114,13 @@ const Dashboard = () => {
                     <li key={p._id}>
                       <Link
                         to={`/admin/products/${p._id}/edit`}
-                        className="flex items-center gap-3 rounded-2xl bg-slate-950/40 px-3 py-2 transition hover:bg-white/5"
+                        className="flex min-w-0 items-center gap-3 rounded-2xl bg-slate-950/40 px-3 py-2 transition hover:bg-white/5"
                       >
                         {p.images?.[0]?.url && (
-                          <img src={optimizeImage(p.images[0].url, 80)} alt="" className="h-10 w-10 rounded-xl object-cover" />
+                          <img src={optimizeImage(p.images[0].url, 80)} alt="" className="h-10 w-10 shrink-0 rounded-xl object-cover" />
                         )}
-                        <span className="flex-1 truncate text-sm text-slate-200">{p.name}</span>
-                        <span className={`text-sm font-semibold ${p.stock === 0 ? 'text-rose-300' : 'text-amber-300'}`}>
+                        <span className="min-w-0 flex-1 truncate text-sm text-slate-200">{p.name}</span>
+                        <span className={`shrink-0 text-sm font-semibold ${p.stock === 0 ? 'text-rose-300' : 'text-amber-300'}`}>
                           {formatQuantity(p.stock, p.unit)}
                         </span>
                       </Link>

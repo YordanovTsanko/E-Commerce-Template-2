@@ -4,8 +4,8 @@ import { usePageTitle } from '../../hooks/usePageTitle';
 export const AdminPageHeader = ({ title, description, actions }) => {
   usePageTitle(`${title} · Админ`);
   return (
-    <div className="flex flex-wrap items-end justify-between gap-4">
-      <div>
+    <div className="flex min-w-0 flex-wrap items-end justify-between gap-4">
+      <div className="min-w-0">
         <Eyebrow>Админ панел</Eyebrow>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">{title}</h1>
         {description && <p className="mt-2 text-slate-400">{description}</p>}
